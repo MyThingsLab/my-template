@@ -1,5 +1,7 @@
 # my-template
 
+[![CI](https://github.com/MyThingsLab/my-template/actions/workflows/ci.yml/badge.svg)](https://github.com/MyThingsLab/my-template/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/MyThingsLab/my-template/branch/main/graph/badge.svg)](https://codecov.io/gh/MyThingsLab/my-template) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 The canonical scaffold for a [MyThingsLab](../mythings-core) `My[X]` tool. It is
 a **working, CI-green skeleton** — the shared seams (pyproject, `ci.yml`,
 `.gitignore`, LICENSE, `.pre-commit-config.yaml`, vendored `HARNESS.md`, the
