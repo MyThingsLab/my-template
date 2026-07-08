@@ -24,6 +24,7 @@ exists only to be copied.
    ```
 3. Fill the four per-tool seams in [`CLAUDE.md`](CLAUDE.md) — purpose, the single
    Engine call, invariants, backlog label — and rewrite this README for the tool.
+   The seam-check test fails CI while any seam is left unfilled after the rename.
 4. `pip install -e ../my-things-core -e ".[dev]" && pre-commit install`.
 5. Record the scaffold in provenance:
    `python -m mythings._devledger add scaffold --detail "copied my-template"`.
