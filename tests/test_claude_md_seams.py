@@ -10,6 +10,7 @@ TEMPLATE_SEAMS = (
     "<the one judgment step delegated to a model",
     "<what must always hold; what this tool may never do>",
     "<the GitHub issue label it picks up>",
+    "<the safe command(s) that prove the tool works end-to-end",
 )
 
 
@@ -28,5 +29,5 @@ def test_claude_md_seams_are_filled_after_rename() -> None:
     else:
         assert not remaining, (
             f"CLAUDE.md still has unfilled template seams: {remaining} — "
-            "fill the four per-tool seams (purpose, Engine call, invariants, backlog label)"
+            "fill the five per-tool seams (purpose, Engine call, invariants, backlog label, verify)"
         )
