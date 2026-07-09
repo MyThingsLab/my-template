@@ -8,7 +8,21 @@ a **working, CI-green skeleton** — the shared seams (pyproject, `ci.yml`,
 harness drift-check test, `dev-ledger/`) are already wired up and verified, so a
 new tool starts from a passing build instead of an empty directory.
 
-This is not itself a `My[X]` tool: it ships no Engine call and no rules. It
+The package is a working harness loop, not an empty dir: `src/mytemplate/`
+ships the plumbing (read one labeled issue → deterministic pre-work → one
+Engine call → apply inside an isolated `Workspace` → draft PR, Policy-gated
+and ledgered) with the judgment left as three seam methods
+(`prework`/`request`/`apply`) and the constants at the top of `tool.py`.
+Out of the box `apply` changes nothing, so
+
+```bash
+mytemplate run --engine noop   # or: python -m mytemplate run
+```
+
+is a safe end-to-end dry run: zero tokens, no branch, no PR, one honest
+ledger entry.
+
+This is not itself a `My[X]` tool: it ships no judgment of its own. It
 exists only to be copied.
 
 ## Starting a new tool from it
@@ -25,6 +39,8 @@ exists only to be copied.
 3. Fill the four per-tool seams in [`CLAUDE.md`](CLAUDE.md) — purpose, the single
    Engine call, invariants, backlog label — and rewrite this README for the tool.
    The seam-check test fails CI while any seam is left unfilled after the rename.
+   In code, override the seam methods in `tool.py` (`prework`/`request`/`apply`)
+   and its `TOOL`/`LEDGER_KIND`/`BACKLOG_LABEL`/`SYSTEM` constants.
 4. `pip install -e ../my-things-core -e ".[dev]" && pre-commit install`.
 5. Record the scaffold in provenance:
    `python -m mythings._devledger add scaffold --detail "copied my-template"`.
