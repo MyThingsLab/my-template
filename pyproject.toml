@@ -15,6 +15,9 @@ dependencies = ["my-things-core"]
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "pre-commit>=3"]
 
+[project.scripts]
+mytemplate = "mytemplate.cli:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/mytemplate"]
 
@@ -24,6 +27,11 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.coverage.report]
+# Meaningful only now that the package ships a real skeleton; CI runs pytest
+# with --cov, so a coverage regression fails the build.
+fail_under = 85
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
