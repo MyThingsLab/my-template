@@ -93,10 +93,15 @@ def main(argv: list[str] | None = None) -> int:
     changed = init(root, args.name)
     print(f"renamed {len(changed)} files; package is src/{args.name.replace('-', '')}/")
 
-    # Job done — a renamed tool has no template left to initialize.
+    # Job done — a renamed tool has no template left to initialize. The test
+    # that guards this script only makes sense in my-template itself, so it
+    # leaves with the script rather than shipping as a permanent red test.
     Path(__file__).resolve().unlink()
     if not any((root / "scripts").iterdir()):
         shutil.rmtree(root / "scripts")
+    test_init_script = root / "tests" / "test_init_script.py"
+    if test_init_script.exists():
+        test_init_script.unlink()
 
     print(
         "next: fill the four CLAUDE.md seams, override the tool.py seam methods,\n"
