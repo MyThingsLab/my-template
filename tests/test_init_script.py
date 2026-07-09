@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -73,3 +75,25 @@ def test_init_seeds_a_fresh_dev_ledger(copy: Path) -> None:
 def test_init_rejects_a_bad_name(copy: Path) -> None:
     with pytest.raises(SystemExit):
         load_init().init(copy, "MyFoo")
+
+
+def test_main_deletes_itself_and_its_own_test(copy: Path) -> None:
+    # Exercises main() (not init()) via subprocess so the self-delete really
+    # runs against the disposable copy, never the template's own source tree.
+    result = subprocess.run(
+        [sys.executable, "scripts/init.py", "my-foo"],
+        cwd=copy,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not (copy / "scripts" / "init.py").exists()
+    assert not (copy / "scripts").exists()
+    assert not (copy / "tests" / "test_init_script.py").exists()
+
+
+def test_init_script_and_its_test_both_exist_in_template() -> None:
+    # Guards the pair from drifting apart: the test is only meaningful
+    # alongside the script it execs, and both leave together in main().
+    assert (ROOT / "scripts" / "init.py").exists()
+    assert (ROOT / "tests" / "test_init_script.py").exists()
