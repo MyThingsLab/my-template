@@ -35,6 +35,13 @@ jobs:
         run: ruff check src tests
       - name: Tests
         run: pytest --cov=mytemplate --cov-report=xml
+      # Warn-only for now (continue-on-error) -- see my-things-core's
+      # docs/CONVENTIONS.md "Dependency-vulnerability scanning" for why.
+      - name: Dependency vulnerability scan (warn-only)
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
