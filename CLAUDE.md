@@ -13,3 +13,10 @@ covered here defers to `HARNESS.md`, then `my-things-core/docs/CONVENTIONS.md`.
   "none — deterministic">
 - **Invariants / rules:** <what must always hold; what this tool may never do>
 - **Backlog label:** <the GitHub issue label it picks up>
+
+## Testing
+
+Fakes come from `mythings.testing` (opt-in via `pytest_plugins` in
+`tests/conftest.py`; see `my-things-core/docs/CONVENTIONS.md`, "Shared test
+fixtures"). Never copy fixture code into a conftest — only domain-specific
+helpers live there.
