@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -9,26 +8,19 @@ from mythings.engine import EngineResult, NoopEngine
 from mythings.github import GitHub, Issue
 from mythings.ledger import Ledger, LedgerEntry
 from mythings.policy import Action, Decision, PolicyResult
+from mythings.testing import FakeGh, make_git_repo
 
 from mytemplate.tool import LEDGER_KIND, TOOL, Result, Tool
 
 
-class FakeRunner:
+def gh_for(issues: list[dict] | None = None) -> FakeGh:
     # The gh process is the only mocked boundary, mirroring the core tests.
-    def __init__(self, issues: list[dict] | None = None) -> None:
-        self.issues = issues or []
-        self.calls: list[list[str]] = []
-
-    def __call__(self, argv: list[str]) -> str:
-        self.calls.append(argv)
-        if argv[:2] == ["issue", "list"]:
-            return json.dumps(self.issues)
-        if argv[:2] == ["pr", "create"]:
-            return "https://github.com/o/r/pull/7\n"
-        raise AssertionError(f"unexpected gh argv: {argv}")
-
-    def saw(self, *prefix: str) -> bool:
-        return any(call[: len(prefix)] == list(prefix) for call in self.calls)
+    return FakeGh(
+        {
+            ("issue", "list"): json.dumps(issues or []),
+            ("pr", "create"): "https://github.com/o/r/pull/7\n",
+        }
+    )
 
 
 def issue_obj(number: int = 1, title: str = "do the thing") -> dict:
@@ -43,38 +35,12 @@ def issue_obj(number: int = 1, title: str = "do the thing") -> dict:
 
 @pytest.fixture()
 def clone(tmp_path: Path) -> Path:
-    # A real clone with an origin/main ref, so Workspace's worktree dance runs
+    # A real repo with an origin/main ref, so Workspace's worktree dance runs
     # for real; only gh and the push-side git calls are faked.
-    def git(cwd: Path, *argv: str) -> None:
-        subprocess.run(
-            ["git", *argv],
-            cwd=cwd,
-            check=True,
-            capture_output=True,
-            env={
-                "GIT_AUTHOR_NAME": "t",
-                "GIT_AUTHOR_EMAIL": "t@t",
-                "HOME": str(tmp_path),
-                "GIT_COMMITTER_NAME": "t",
-                "GIT_COMMITTER_EMAIL": "t@t",
-                "PATH": "/usr/bin:/bin",
-            },
-        )
-
-    bare = tmp_path / "origin.git"
-    bare.mkdir()
-    git(bare, "init", "--bare", "-b", "main")
-    work = tmp_path / "clone"
-    git(tmp_path, "clone", str(bare), str(work))
-    (work / "README.md").write_text("seed\n")
-    git(work, "add", "README.md")
-    git(work, "commit", "-m", "seed")
-    git(work, "push", "origin", "HEAD:main")
-    git(work, "fetch", "origin")
-    return work
+    return make_git_repo(tmp_path, files={"README.md": "seed\n"}).path
 
 
-def make_tool(clone: Path, tmp_path: Path, runner: FakeRunner, **kwargs) -> tuple[Tool, list]:
+def make_tool(clone: Path, tmp_path: Path, runner: FakeGh, **kwargs) -> tuple[Tool, list]:
     git_calls: list[tuple[Path, list[str]]] = []
     tool = kwargs.pop("cls", Tool)(
         repo=clone,
@@ -93,7 +59,7 @@ def ledger_entries(tmp_path: Path) -> list[LedgerEntry]:
 
 
 def test_run_skips_when_no_labeled_issue(clone: Path, tmp_path: Path) -> None:
-    runner = FakeRunner(issues=[])
+    runner = gh_for(issues=[])
     tool, _ = make_tool(clone, tmp_path, runner)
     result = tool.run()
     assert result.outcome == "skipped"
@@ -104,7 +70,7 @@ def test_run_skips_when_no_labeled_issue(clone: Path, tmp_path: Path) -> None:
 def test_run_is_a_safe_noop_by_default(clone: Path, tmp_path: Path) -> None:
     # The pristine template's apply() changes nothing, so `run --engine noop`
     # is an end-to-end dry run: no branch, no PR, one honest ledger entry.
-    runner = FakeRunner(issues=[issue_obj()])
+    runner = gh_for(issues=[issue_obj()])
     tool, git_calls = make_tool(clone, tmp_path, runner)
     result = tool.run()
     assert result == Result(outcome="noop", detail="nothing to change for #1", issue=1)
@@ -121,7 +87,7 @@ class WritingTool(Tool):
 
 
 def test_run_opens_a_draft_pr_when_apply_changes_something(clone: Path, tmp_path: Path) -> None:
-    runner = FakeRunner(issues=[issue_obj(number=4)])
+    runner = gh_for(issues=[issue_obj(number=4)])
     tool, git_calls = make_tool(clone, tmp_path, runner, cls=WritingTool)
     result = tool.run(issue_number=4)
     assert result.outcome == "success"
@@ -136,7 +102,7 @@ def test_run_opens_a_draft_pr_when_apply_changes_something(clone: Path, tmp_path
 
 
 def test_run_returns_none_for_unknown_issue_number(clone: Path, tmp_path: Path) -> None:
-    runner = FakeRunner(issues=[issue_obj(number=4)])
+    runner = gh_for(issues=[issue_obj(number=4)])
     tool, _ = make_tool(clone, tmp_path, runner)
     assert tool.run(issue_number=99).outcome == "skipped"
 
@@ -150,7 +116,7 @@ def test_ask_fails_closed_unattended(
     clone: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
-    runner = FakeRunner(issues=[issue_obj()])
+    runner = gh_for(issues=[issue_obj()])
     tool, git_calls = make_tool(clone, tmp_path, runner, cls=WritingTool, policy=AskPolicy())
     result = tool.run()
     assert result.outcome == "denied"
