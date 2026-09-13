@@ -3,7 +3,7 @@
 Run from the copy's root: `python scripts/init.py my-foo`. Replaces the manual
 `grep -rl template` sweep: renames the package dir, rewrites `mytemplate` /
 `my-template` across the tree, seeds the dev-ledger scaffold entry, and
-removes itself. The four CLAUDE.md prose seams stay open on purpose — filling
+removes itself. The four AGENTS.md prose seams stay open on purpose — filling
 them is a judgment call, and the seam-check test fails CI until a human does.
 """
 
@@ -104,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         test_init_script.unlink()
 
     print(
-        "next: fill the four CLAUDE.md seams, override the tool.py seam methods,\n"
+        "next: fill the four AGENTS.md seams, override the tool.py seam methods,\n"
         'rewrite README.md, then `pip install -e ../my-things-core -e ".[dev]"` and pytest'
     )
     return 0

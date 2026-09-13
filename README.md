@@ -35,8 +35,9 @@ exists only to be copied.
    ```bash
    python scripts/init.py my-<x>
    ```
-3. Fill the four per-tool seams in [`CLAUDE.md`](CLAUDE.md) — purpose, the single
-   Engine call, invariants, backlog label — and rewrite this README for the tool.
+3. Fill the four per-tool seams in [`AGENTS.md`](AGENTS.md) (with `CLAUDE.md` and
+   `GEMINI.md` symlinks) — purpose, the single Engine call, invariants, backlog
+   label — and rewrite this README for the tool.
    The seam-check test fails CI while any seam is left unfilled after the rename.
    In code, override the seam methods in `tool.py` (`prework`/`request`/`apply`)
    and its `TOOL`/`LEDGER_KIND`/`BACKLOG_LABEL`/`SYSTEM` constants.
