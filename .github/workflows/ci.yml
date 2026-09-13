@@ -3,11 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore: ["**.md", "docs/**", "dev-ledger/**"]
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore: ["**.md", "docs/**", "dev-ledger/**"]
 
 # Supersede in-flight runs when an agent pushes again to the same ref.
 concurrency:
@@ -31,14 +29,38 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      - name: Check changed files
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              BASE="HEAD~1"
+            fi
+            HEAD="HEAD"
+          fi
+          CHANGED=$(git diff --name-only "$BASE" "$HEAD" | grep -vE '(\.md$|^docs/|^dev-ledger/)' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "code_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code_changed=false" >> "$GITHUB_OUTPUT"
+            echo "Only docs/dev-ledger changed; skipping build and test steps."
+          fi
       # my-things-core is a sibling repo, not on PyPI — pull it from the same owner.
       - name: Install my-things-core
+        if: steps.changes.outputs.code_changed == 'true'
         run: pip install "my-things-core @ git+https://github.com/${{ github.repository_owner }}/my-things-core@main"
       - name: Install
+        if: steps.changes.outputs.code_changed == 'true'
         run: pip install -e ".[dev]"
       - name: Ruff
+        if: steps.changes.outputs.code_changed == 'true'
         run: ruff check src tests
       - name: Tests
+        if: steps.changes.outputs.code_changed == 'true'
         run: pytest --cov=mytemplate --cov-report=xml
       - name: Secret scan (added lines vs base)
         if: github.event_name == 'pull_request'
