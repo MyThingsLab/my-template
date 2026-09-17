@@ -3,8 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+  # No `branches:` filter here: that filter matches the *base* branch, so a
+  # stacked PR (base != main) produced no run at all, and therefore never the
+  # `test` check main's branch protection requires -- unmergeable regardless of
+  # how good the code was. `push` above stays scoped to main, the only ref where
+  # a push-triggered run matters.
   pull_request:
-    branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
 
 # Supersede in-flight runs when an agent pushes again to the same ref.
@@ -21,9 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # Full history so the secret-scan diff range below can resolve both
-          # the PR's base and head SHAs -- a shallow (default) clone wouldn't
-          # have the base commit locally.
+          # Full history so the secret-scan diff range below -- and the
+          # changed-files diff that decides whether this job tests anything at
+          # all -- can resolve both the PR's base and head SHAs. A shallow
+          # (default) clone wouldn't have the base commit locally, and my-fleet
+          # dropped this line while copying the step-skipping block: its diff
+          # then failed on every run, the `|| true` read that as "nothing
+          # changed", and Install/Ruff/Tests skipped while the job reported
+          # success for weeks.
           fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
@@ -42,7 +51,17 @@ jobs:
             fi
             HEAD="HEAD"
           fi
-          CHANGED=$(git diff --name-only "$BASE" "$HEAD" | grep -vE '(\.md$|^docs/|^dev-ledger/)' || true)
+          # Fail closed. A base SHA can be unreachable even with full history
+          # (a force-push, a GC), and "I could not tell what changed" must mean
+          # "run everything", never "skip everything" -- otherwise the cheap
+          # answer and the unsafe answer are the same one, and the required
+          # check goes green without running.
+          if ! DIFF=$(git diff --name-only "$BASE" "$HEAD" 2>&1); then
+            echo "code_changed=true" >> "$GITHUB_OUTPUT"
+            echo "Could not diff $BASE..$HEAD; running the full job. ($DIFF)"
+            exit 0
+          fi
+          CHANGED=$(printf '%s\n' "$DIFF" | grep -vE '(\.md$|^docs/|^dev-ledger/)' || true)
           if [ -n "$CHANGED" ]; then
             echo "code_changed=true" >> "$GITHUB_OUTPUT"
           else
